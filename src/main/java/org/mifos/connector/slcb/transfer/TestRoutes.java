@@ -20,9 +20,14 @@ public class TestRoutes extends RouteBuilder {
         from("rest:get:/start")
                 .id("slcb-flow-start")
                 .process(exchange -> {
-                    Map<String, Object> variables = new HashMap<>();
-                    variables.put("transactionId", UUID.randomUUID());
-                    zeebeProcessStarter.startZeebeWorkflow("SLCB", variables);
+                    try {
+                        Map<String, Object> variables = new HashMap<>();
+                        variables.put("transactionId", UUID.randomUUID());
+                        zeebeProcessStarter.startZeebeWorkflow("SLCB", variables);
+                    } catch (Exception e) {
+
+                    }
+
                 })
                 .setBody(constant("Started"));
     }

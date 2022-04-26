@@ -6,6 +6,12 @@ camel:
     json-jackson:
       auto-discover-object-mapper: true
 
+kafka:
+  bootstrapAddress: "127.0.0.1:9092"
+  topic:
+    slcb:
+      name: slcb
+
 zeebe:
   client:
     max-execution-threads: 100
