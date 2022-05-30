@@ -1,4 +1,4 @@
-package org.mifos.connector.slcb.transfer;
+package org.mifos.connector.slcb.camel.routes.transfer;
 
 import io.camunda.zeebe.client.ZeebeClient;
 import org.apache.camel.Exchange;
