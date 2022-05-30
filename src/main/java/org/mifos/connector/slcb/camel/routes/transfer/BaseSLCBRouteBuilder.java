@@ -1,4 +1,4 @@
-package org.mifos.connector.slcb.transfer;
+package org.mifos.connector.slcb.camel.routes.transfer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.Exchange;

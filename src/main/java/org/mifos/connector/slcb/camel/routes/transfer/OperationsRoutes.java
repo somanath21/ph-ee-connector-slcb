@@ -1,4 +1,4 @@
-package org.mifos.connector.slcb.transfer;
+package org.mifos.connector.slcb.camel.routes.transfer;
 
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;

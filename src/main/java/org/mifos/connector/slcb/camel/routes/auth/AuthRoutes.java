@@ -1,4 +1,4 @@
-package org.mifos.connector.slcb.auth;
+package org.mifos.connector.slcb.camel.routes.auth;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
