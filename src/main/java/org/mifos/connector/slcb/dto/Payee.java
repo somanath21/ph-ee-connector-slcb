@@ -1,7 +1,7 @@
 package org.mifos.connector.slcb.dto;
 
 public class Payee {
-    public int id;
+    public String id;
     public String account;
     public int accountType;
     public double amount;
@@ -16,11 +16,11 @@ public class Payee {
     public Payee() {
     }
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 

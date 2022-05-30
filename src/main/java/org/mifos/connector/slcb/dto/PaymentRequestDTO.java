@@ -5,7 +5,7 @@ import java.util.List;
 
 public class PaymentRequestDTO {
 
-    public int id;
+    public String id;
     public int accountType;
     public String authorizationCode;
     public String batchID;
@@ -21,11 +21,11 @@ public class PaymentRequestDTO {
     public PaymentRequestDTO() {
     }
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 

@@ -12,7 +12,6 @@ import org.mifos.connector.slcb.dto.AuthErrorDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import static org.mifos.connector.slcb.camel.config.CamelProperties.SLCB_ACCESS_TOKEN;
@@ -26,10 +25,13 @@ public class AuthRoutes extends RouteBuilder {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Override
-    public void configure() throws Exception {
+    public void configure() {
+
+        from("rest:get:test/auth")
+                .to("direct:get-access-token");
 
         /**
          * Error handling route

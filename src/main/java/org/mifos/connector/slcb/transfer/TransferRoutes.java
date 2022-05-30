@@ -4,19 +4,27 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 import org.mifos.connector.slcb.utils.SecurityUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import java.util.UUID;
 
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 
 @Component
 public class TransferRoutes extends BaseSLCBRouteBuilder {
 
-    @Autowired
-    private TransferResponseProcessor transferResponseProcessor;
+    private final TransferResponseProcessor transferResponseProcessor;
+
+    public TransferRoutes(TransferResponseProcessor transferResponseProcessor) {
+        this.transferResponseProcessor = transferResponseProcessor;
+    }
 
     @Override
     public void configure() {
+
+        from("rest:post:test/transferRequest")
+                .process(exchange -> exchange.setProperty(SLCB_CHANNEL_REQUEST, exchange.getIn().getBody(String.class)))
+                .to("direct:transfer-route")
+                .setBody(exchange -> exchange.getIn().getBody(String.class));
 
         /*
          * Base route for transactions
@@ -56,15 +64,16 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
          */
         getBaseAuthDefinitionBuilder("direct:commit-transaction", HttpRequestMethod.POST)
                 .process(exchange -> {
-                    // TODO: Verify the exact content to be signed from SLCB team.
-                    String signedBody = SecurityUtils.signContent(
-                            exchange.getProperty(SLCB_CHANNEL_REQUEST, String.class), slcbConfig.signatureKey);
+                    String signedBody = SecurityUtils.signContent(UUID.randomUUID().toString(), slcbConfig.signatureKey);
+                    String prop = exchange.getProperty(SLCB_CHANNEL_REQUEST, String.class);
+                    logger.info("Properties: " + prop);
                     PaymentRequestDTO slcbChannelRequestBody = objectMapper.readValue(
-                            exchange.getProperty(SLCB_CHANNEL_REQUEST, String.class), PaymentRequestDTO.class);
+                            prop, PaymentRequestDTO.class);
                     slcbChannelRequestBody.setAuthorizationCode(signedBody);
                     exchange.setProperty(SLCB_CHANNEL_REQUEST, slcbChannelRequestBody);
                 })
                 .setBody(exchange -> exchange.getProperty(SLCB_CHANNEL_REQUEST))
+                .marshal().json(JsonLibrary.Jackson)
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
                 .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false");
 
