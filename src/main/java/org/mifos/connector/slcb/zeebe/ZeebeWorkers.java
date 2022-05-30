@@ -11,29 +11,30 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import javax.annotation.PostConstruct;
 import java.util.Map;
-
 import static org.mifos.connector.slcb.camel.config.CamelProperties.CORRELATION_ID;
 import static org.mifos.connector.slcb.camel.config.CamelProperties.SLCB_CHANNEL_REQUEST;
 
 @Component
 public class ZeebeWorkers {
 
+    public ZeebeWorkers(ObjectMapper objectMapper, ZeebeClient zeebeClient, ProducerTemplate producerTemplate, CamelContext camelContext) {
+        this.objectMapper = objectMapper;
+        this.zeebeClient = zeebeClient;
+        this.producerTemplate = producerTemplate;
+        this.camelContext = camelContext;
+    }
+
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private ZeebeClient zeebeClient;
+    private final ZeebeClient zeebeClient;
 
-    @Autowired
-    private ProducerTemplate producerTemplate;
+    private final ProducerTemplate producerTemplate;
 
-    @Autowired
-    private CamelContext camelContext;
+    private final CamelContext camelContext;
 
     @Value("${zeebe.client.evenly-allocated-max-jobs}")
     private int workerMaxJobs;
@@ -42,14 +43,14 @@ public class ZeebeWorkers {
     public void setupWorkers() {
 
         zeebeClient.newWorker()
-                .jobType("initiateTransfer")
+                .jobType(Worker.SLCB_TRANSFER.toString())
                 .handler((client, job) -> {
                     logger.info("Job '{}' started from process '{}' with key {}", job.getType(), job.getBpmnProcessId(), job.getKey());
                     Map<String, Object> variables = job.getVariablesAsMap();
 
                     Exchange exchange = new DefaultExchange(camelContext);
                     exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
-                    exchange.setProperty(SLCB_CHANNEL_REQUEST, variables.get("slcbChannelRequest"));
+                    exchange.setProperty(SLCB_CHANNEL_REQUEST, variables.get(SLCB_CHANNEL_REQUEST));
 
                     producerTemplate.send("direct:transfer-route", exchange);
 
@@ -58,8 +59,23 @@ public class ZeebeWorkers {
                             .send()
                             .join();
                 })
-                .name("initiateTransfer")
+                .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)
                 .open();
+    }
+
+    protected enum Worker {
+        SLCB_TRANSFER("slcb-transfer");
+
+        private final String text;
+
+        Worker(String text) {
+            this.text = text;
+        }
+
+        @Override
+        public String toString() {
+            return text;
+        }
     }
 }
