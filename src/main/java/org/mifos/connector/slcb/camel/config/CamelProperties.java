@@ -12,4 +12,6 @@ public class CamelProperties {
     public static final String SLCB_CHANNEL_REQUEST = "slcbChannelRequest";
     public static final String SLCB_BALANCE_REQUEST = "slcbBalanceRequest";
     public static final String SLCB_RECONCILIATION_REQUEST = "slcbReconciliationRequest";
+
+    public static final String SLCB_TRANSACTION_RESPONSE = "slcbTransactionResponse";
 }

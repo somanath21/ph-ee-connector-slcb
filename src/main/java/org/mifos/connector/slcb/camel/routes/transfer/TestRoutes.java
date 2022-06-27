@@ -59,9 +59,9 @@ public class TestRoutes extends RouteBuilder {
                     paymentRequestDTOList.add(paymentRequestDTO2);
 
 
-                    File file = CsvUtils.createCSVFile(paymentRequestDTOList);
+                    File file = CsvUtils.createCSVFile(paymentRequestDTOList, PaymentRequestDTO.class);
                     System.out.println(file.getAbsolutePath());
-                    String result = fileTransferService.uploadFile(file, "paymenthub-ee-dev");
+                    String result = fileTransferService.uploadFile(file);
                     exchange.getIn().setBody(result);
                 });
     }

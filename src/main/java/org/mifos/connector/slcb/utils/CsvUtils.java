@@ -1,5 +1,6 @@
 package org.mifos.connector.slcb.utils;
 
+import org.mifos.connector.common.gsma.dto.GsmaParty;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 
 import java.io.File;
@@ -10,15 +11,16 @@ import java.util.List;
 
 public class CsvUtils {
 
-    public static File createCSVFile(List<PaymentRequestDTO> paymentRequestDTOList) throws IOException {
+    public static <T> File createCSVFile(List<T> objectList, Class<T> dtoClass) throws IOException {
         Long timestamp = System.currentTimeMillis();
         String filePath = String.format("src/%s.csv", timestamp);
         File csvFile = new File(filePath);
         PrintWriter out = new PrintWriter(csvFile);
 
-        out.println(getCsvHeader(PaymentRequestDTO.class));
-        for (PaymentRequestDTO paymentRequestDTO: paymentRequestDTOList) {
-            out.println(addObjectRow(paymentRequestDTO));
+        out.println(getCsvHeader(dtoClass));
+        for (T dto: objectList) {
+            String row = addObjectRow(dto);
+            out.println(row);
         }
         out.close();
 
@@ -56,6 +58,8 @@ public class CsvUtils {
                 value = field.get(obj);
                 if(value == null)
                     value = "";
+                // apply custom checks and parsing here
+                value = checkIfGSMAPartyArray(value);
                 if(firstField){
                     csvRow.append(value);
                     firstField = false;
@@ -69,5 +73,25 @@ public class CsvUtils {
             }
         }
         return csvRow.toString();
+    }
+
+    private static Object checkIfGSMAPartyArray(Object value) {
+        try {
+            GsmaParty[] GSMAParties = (GsmaParty[]) value;
+            StringBuilder builder = new StringBuilder();
+            builder.append("[");
+            for(GsmaParty party: GSMAParties) {
+                builder.append("[");
+                builder.append(party.getKey());
+                builder.append(", ");
+                builder.append(party.getValue());
+                builder.append("],");
+            }
+            builder.deleteCharAt(builder.length()-1);
+            builder.append("]");
+            return builder.toString();
+        } catch (Exception e) {
+            return value;
+        }
     }
 }
