@@ -2,9 +2,18 @@ package org.mifos.connector.slcb.camel.routes.transfer;
 
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
+import org.mifos.connector.common.gsma.dto.GSMATransaction;
+import org.mifos.connector.slcb.config.AwsFileTransferService;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
+import org.mifos.connector.slcb.utils.CsvUtils;
+import org.mifos.connector.slcb.utils.SLCBUtils;
 import org.mifos.connector.slcb.utils.SecurityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
@@ -14,8 +23,11 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
 
     private final TransferResponseProcessor transferResponseProcessor;
 
-    public TransferRoutes(TransferResponseProcessor transferResponseProcessor) {
+    private final AwsFileTransferService awsFileTransferService;
+
+    public TransferRoutes(TransferResponseProcessor transferResponseProcessor, AwsFileTransferService awsFileTransferService) {
         this.transferResponseProcessor = transferResponseProcessor;
+        this.awsFileTransferService = awsFileTransferService;
     }
 
     @Override
@@ -49,8 +61,13 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .when(header("CamelHttpResponseCode").isEqualTo("200"))
                 .log(LoggingLevel.INFO, "Transaction request successful")
                 .unmarshal().json(JsonLibrary.Jackson, PaymentRequestDTO.class)
-                .process(exchange ->
-                        logger.info("Status: " + exchange.getIn().getBody(PaymentRequestDTO.class).getStatus()))
+                .process((exchange) -> {
+                    PaymentRequestDTO paymentRequestDTO = exchange.getIn().getBody(PaymentRequestDTO.class);
+                    exchange.setProperty(SLCB_TRANSACTION_RESPONSE, paymentRequestDTO);
+                    logger.info("Status: " + paymentRequestDTO.getStatus());
+                }
+                )
+                .to("direct:upload-to-s3")
                 .otherwise()
                 .log(LoggingLevel.ERROR, "Transaction request unsuccessful")
                 .process(exchange -> {
@@ -76,6 +93,18 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .marshal().json(JsonLibrary.Jackson)
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
                 .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false");
+
+        from("direct:upload-to-s3")
+                .id("upload-to-s3")
+                .log(LoggingLevel.INFO, "Uploading to S3 route started.")
+                .process(exchange -> {
+                    PaymentRequestDTO paymentRequestDTO = exchange.getProperty(SLCB_TRANSACTION_RESPONSE,
+                            PaymentRequestDTO.class);
+                    List<GSMATransaction> transactionList = SLCBUtils.convertPaymentRequestDto(paymentRequestDTO);
+                    File csvFile = CsvUtils.createCSVFile(transactionList, GSMATransaction.class);
+                    String fileName = awsFileTransferService.uploadFile(csvFile);
+                    logger.info("Uploaded CSV in S3 with name: " + fileName);
+                });
 
     }
 }

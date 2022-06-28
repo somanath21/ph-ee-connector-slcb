@@ -23,6 +23,7 @@ zeebe:
 
 cloud:
   aws:
+    bucket-name: ${AWS_BUCKET_NAME:paymenthub-ee-dev}
     enabled: true
     credentials:
       access-key: ${AWS_ACCESS_KEY:AKIAX32JM37TZOJ5AKFB}
