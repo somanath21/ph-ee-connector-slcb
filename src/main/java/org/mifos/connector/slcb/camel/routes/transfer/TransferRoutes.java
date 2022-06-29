@@ -8,14 +8,10 @@ import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 import org.mifos.connector.slcb.utils.CsvUtils;
 import org.mifos.connector.slcb.utils.SLCBUtils;
 import org.mifos.connector.slcb.utils.SecurityUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import java.io.File;
 import java.util.List;
 import java.util.UUID;
-
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 
 @Component

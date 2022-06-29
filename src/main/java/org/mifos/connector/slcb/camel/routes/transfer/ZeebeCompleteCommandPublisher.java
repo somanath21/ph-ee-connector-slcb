@@ -3,7 +3,6 @@ package org.mifos.connector.slcb.camel.routes.transfer;
 import io.camunda.zeebe.client.ZeebeClient;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
