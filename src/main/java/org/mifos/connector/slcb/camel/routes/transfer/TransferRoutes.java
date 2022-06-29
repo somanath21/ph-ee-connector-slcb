@@ -25,18 +25,17 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
 
     private final AwsFileTransferService awsFileTransferService;
 
-    public TransferRoutes(TransferResponseProcessor transferResponseProcessor, AwsFileTransferService awsFileTransferService) {
+    private final
+    ZeebeCompleteCommandPublisher zeebeCompleteCommandPublisher;
+
+    public TransferRoutes(TransferResponseProcessor transferResponseProcessor, AwsFileTransferService awsFileTransferService, ZeebeCompleteCommandPublisher zeebeCompleteCommandPublisher) {
         this.transferResponseProcessor = transferResponseProcessor;
         this.awsFileTransferService = awsFileTransferService;
+        this.zeebeCompleteCommandPublisher = zeebeCompleteCommandPublisher;
     }
 
     @Override
     public void configure() {
-
-        from("rest:post:test/transferRequest")
-                .process(exchange -> exchange.setProperty(SLCB_CHANNEL_REQUEST, exchange.getIn().getBody(String.class)))
-                .to("direct:transfer-route")
-                .setBody(exchange -> exchange.getIn().getBody(String.class));
 
         /*
          * Base route for transactions
@@ -50,7 +49,8 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .to("direct:commit-transaction")
                 .log(LoggingLevel.INFO, "Status: ${header.CamelHttpResponseCode}")
                 .log(LoggingLevel.INFO, "Transaction API response: ${body}")
-                .to("direct:transaction-response-handler");
+                .to("direct:transaction-response-handler")
+                .process(zeebeCompleteCommandPublisher);
 
         /*
          * Route to handle async API responses
@@ -74,7 +74,8 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                     exchange.setProperty(TRANSACTION_ID, exchange.getProperty(CORRELATION_ID)); // TODO: Improve this
                 })
                 .setProperty(TRANSACTION_FAILED, constant(true))
-                .process(transferResponseProcessor);
+                .process(transferResponseProcessor)
+                .endChoice();
 
         /*
          * Calls SLCB API to commit transaction
@@ -94,6 +95,9 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
                 .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false");
 
+        /*
+         * Generates and uploads the CSV to AWS S3
+         */
         from("direct:upload-to-s3")
                 .id("upload-to-s3")
                 .log(LoggingLevel.INFO, "Uploading to S3 route started.")

@@ -8,13 +8,12 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.camel.support.DefaultExchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.Map;
-import static org.mifos.connector.slcb.camel.config.CamelProperties.CORRELATION_ID;
-import static org.mifos.connector.slcb.camel.config.CamelProperties.SLCB_CHANNEL_REQUEST;
+
+import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 
 @Component
 public class ZeebeWorkers {
@@ -51,13 +50,10 @@ public class ZeebeWorkers {
                     Exchange exchange = new DefaultExchange(camelContext);
                     exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
                     exchange.setProperty(SLCB_CHANNEL_REQUEST, variables.get(SLCB_CHANNEL_REQUEST));
+                    exchange.setProperty(ZEEBE_JOB_KEY, job.getKey());
 
-                    producerTemplate.send("direct:transfer-route", exchange);
+                    producerTemplate.asyncSend("direct:transfer-route", exchange);
 
-                    client.newCompleteCommand(job.getKey())
-                            .variables(variables)
-                            .send()
-                            .join();
                 })
                 .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)
@@ -65,7 +61,8 @@ public class ZeebeWorkers {
     }
 
     protected enum Worker {
-        SLCB_TRANSFER("slcb-transfer");
+        SLCB_TRANSFER("initiateTransfer"),
+        RECONCILIATION("reconciliation");
 
         private final String text;
 
