@@ -8,16 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
-
-import static org.mifos.connector.slcb.camel.config.CamelProperties.ERROR_INFORMATION;
-import static org.mifos.connector.slcb.camel.config.CamelProperties.TRANSACTION_FAILED;
-import static org.mifos.connector.slcb.camel.config.CamelProperties.TRANSACTION_ID;
-import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_MESSAGE;
-import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_RESPONSE;
+import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_STATE;
 
 @Component
@@ -34,7 +26,7 @@ public class TransferResponseProcessor implements Processor {
     @Override
     public void process(Exchange exchange) {
 
-        Map<String, Object> variables = new HashMap<>();
+        Map<String, Object> variables = (Map<String, Object>) exchange.getProperty(ZEEBE_VARIABLES);
 
         Object hasTransferFailed = exchange.getProperty(TRANSACTION_FAILED);
 
@@ -44,24 +36,7 @@ public class TransferResponseProcessor implements Processor {
         } else {
             variables.put(TRANSFER_STATE, "COMMITTED");
             variables.put(TRANSACTION_FAILED, false);
-
-            zeebeClient.newPublishMessageCommand()
-                    .messageName(TRANSFER_MESSAGE)
-                    .correlationKey(exchange.getProperty(TRANSACTION_ID, String.class))
-                    .variables(variables)
-                    .send()
-                    .join();
         }
-
-        logger.info("Publishing transaction message variables: " + variables);
-
-        zeebeClient.newPublishMessageCommand()
-                .messageName(TRANSFER_RESPONSE)
-                .correlationKey(exchange.getProperty(TRANSACTION_ID, String.class))
-                .timeToLive(Duration.ofMillis(timeToLive))
-                .variables(variables)
-                .send()
-                .join();
-
+        exchange.setProperty(ZEEBE_VARIABLES, variables);
     }
 }

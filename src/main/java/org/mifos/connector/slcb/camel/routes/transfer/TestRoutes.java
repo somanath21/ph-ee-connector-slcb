@@ -12,6 +12,8 @@ import java.io.File;
 import java.nio.file.Files;
 import java.util.*;
 
+import static org.mifos.connector.slcb.camel.config.CamelProperties.SLCB_CHANNEL_REQUEST;
+
 @Component
 public class TestRoutes extends RouteBuilder {
 
@@ -64,5 +66,10 @@ public class TestRoutes extends RouteBuilder {
                     String result = fileTransferService.uploadFile(file);
                     exchange.getIn().setBody(result);
                 });
+
+        from("rest:post:test/transferRequest")
+                .process(exchange -> exchange.setProperty(SLCB_CHANNEL_REQUEST, exchange.getIn().getBody(String.class)))
+                .to("direct:transfer-route")
+                .setBody(exchange -> exchange.getIn().getBody(String.class));
     }
 }
