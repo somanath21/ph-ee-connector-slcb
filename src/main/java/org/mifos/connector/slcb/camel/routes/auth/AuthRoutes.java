@@ -74,7 +74,8 @@ public class AuthRoutes extends RouteBuilder {
                     }
                     return null;
                 })
-                .toD(slcbConfig.authUrl + "?bridgeEndpoint=true");
+                .toD(slcbConfig.authUrl + "?bridgeEndpoint=true")
+                .log(LoggingLevel.INFO, "Auth response: \n\n ${body}");
 
         /**
          * Access Token check validity and return value
