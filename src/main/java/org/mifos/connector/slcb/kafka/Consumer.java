@@ -8,7 +8,6 @@ import org.mifos.connector.slcb.zeebe.ZeebeProcessStarter;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-@Component
 public class Consumer {
 
     private final ProducerTemplate producerTemplate;

@@ -3,6 +3,7 @@ package org.mifos.connector.slcb.camel.routes.transfer;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.mifos.connector.common.gsma.dto.GSMATransaction;
+import org.mifos.connector.slcb.camel.config.CamelProperties;
 import org.mifos.connector.slcb.config.AwsFileTransferService;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 import org.mifos.connector.slcb.utils.CsvUtils;
@@ -50,7 +51,9 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .to("direct:commit-transaction")
                 .log(LoggingLevel.INFO, "Status: ${header.CamelHttpResponseCode}")
                 .log(LoggingLevel.INFO, "Transaction API response: ${body}")
-                .to("direct:transaction-response-handler");
+                .to("direct:transaction-response-handler")
+                .marshal().json(JsonLibrary.Jackson)
+                .setBody(exchange -> exchange.getIn().getBody());
 
         /*
          * Route to handle async API responses

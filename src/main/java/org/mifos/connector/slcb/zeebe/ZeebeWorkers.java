@@ -39,7 +39,6 @@ public class ZeebeWorkers {
     @Value("${zeebe.client.evenly-allocated-max-jobs}")
     private int workerMaxJobs;
 
-    @PostConstruct
     public void setupWorkers() {
 
         zeebeClient.newWorker()

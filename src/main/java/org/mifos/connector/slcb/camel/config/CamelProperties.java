@@ -14,4 +14,6 @@ public class CamelProperties {
     public static final String SLCB_RECONCILIATION_REQUEST = "slcbReconciliationRequest";
 
     public static final String SLCB_TRANSACTION_RESPONSE = "slcbTransactionResponse";
+
+    public static final String TEST = "test";
 }

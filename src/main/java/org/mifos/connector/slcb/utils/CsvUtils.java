@@ -15,6 +15,7 @@ public class CsvUtils {
         Long timestamp = System.currentTimeMillis();
         String filePath = String.format("src/%s.csv", timestamp);
         File csvFile = new File(filePath);
+        csvFile.createNewFile();
         PrintWriter out = new PrintWriter(csvFile);
 
         out.println(getCsvHeader(dtoClass));
