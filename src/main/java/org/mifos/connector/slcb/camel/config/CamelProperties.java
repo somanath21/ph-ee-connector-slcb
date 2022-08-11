@@ -24,4 +24,7 @@ public class CamelProperties {
     public static final String SLCB_TRANSACTION_RESPONSE = "slcbTransactionResponse";
 
     public static final String TEST = "test";
+    public static final String ZEEBE_JOB_KEY = "jobKey";
+
+    public static final String ZEEBE_VARIABLES = "zeebeVariables";
 }

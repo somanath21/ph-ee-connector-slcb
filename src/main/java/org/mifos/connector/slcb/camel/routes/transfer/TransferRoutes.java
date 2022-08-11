@@ -12,12 +12,10 @@ import org.mifos.connector.slcb.utils.CsvUtils;
 import org.mifos.connector.slcb.utils.SLCBUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 import static org.mifos.connector.slcb.zeebe.ZeebeVariables.*;
 import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_FAILED;
@@ -29,7 +27,6 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
 
     private final FileTransferService fileTransferService;
 
-
     public TransferRoutes(TransferResponseProcessor transferResponseProcessor, @Qualifier("awsStorage") FileTransferService fileTransferService) {
         this.transferResponseProcessor = transferResponseProcessor;
         this.fileTransferService = fileTransferService;
@@ -37,11 +34,6 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
 
     @Override
     public void configure() {
-
-        from("rest:post:test/transferRequest")
-                .process(exchange -> exchange.setProperty(SLCB_CHANNEL_REQUEST, exchange.getIn().getBody(String.class)))
-                .to("direct:transfer-route")
-                .setBody(exchange -> exchange.getIn().getBody(String.class));
 
         /*
          * Base route for transactions
@@ -103,6 +95,9 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
                 .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false");
 
+        /*
+         * Generates and uploads the CSV to AWS S3
+         */
         from("direct:upload-to-s3")
                 .id("upload-to-s3")
                 .log(LoggingLevel.INFO, "Uploading to S3 route started.")

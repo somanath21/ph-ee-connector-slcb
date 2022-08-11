@@ -10,10 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import javax.annotation.PostConstruct;
 import java.util.Map;
-
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 import static org.mifos.connector.slcb.zeebe.ZeebeVariables.*;
 import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_FAILED;
@@ -72,10 +70,6 @@ public class ZeebeWorkers {
                     variables.put(RECONCILIATION_ENABLED, exchange.getProperty(RECONCILIATION_ENABLED));
                     variables.put(TRANSFER_FAILED, transferFailed);
 
-                    client.newCompleteCommand(job.getKey())
-                            .variables(variables)
-                            .send()
-                            .join();
                 })
                 .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)
@@ -104,7 +98,7 @@ public class ZeebeWorkers {
 
     protected enum Worker {
         SLCB_TRANSFER("initiateTransfer"),
-        SLCB_RECONCILIATION("reconciliation");
+        RECONCILIATION("reconciliation");
 
         private final String text;
 
