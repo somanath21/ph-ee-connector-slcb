@@ -23,4 +23,16 @@ public class ZeebeVariables {
     public static final String ERROR_DESCRIPTION = "errorDescription";
 
     public static final String ERROR_CODE = "errorCode";
+
+    public static final String RECONCILIATION_SUCCESS = "isReconciliationSuccess";
+
+    public static final String RECONCILIATION_RETRY = "reconciliationRetry";
+
+    public static final String TOTAL_TRANSACTION = "TOTAL_TRANSACTIONS";
+
+    public static final String ONGOING_TRANSACTION = "ONGOING";
+
+    public static final String FAILED_TRANSACTION = "FAILED";
+
+    public static final String COMPLETED_TRANSACTION = "COMPLETED";
 }

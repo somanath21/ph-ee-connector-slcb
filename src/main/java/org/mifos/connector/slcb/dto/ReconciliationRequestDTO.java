@@ -4,34 +4,43 @@ import java.util.Date;
 
 public class ReconciliationRequestDTO {
 
-    public Date from;
-    public Date to;
-    public String accountNumber;
+    public String from;
+    public String to;
+    public String authorizationCode;
+    public String bban;
 
     public ReconciliationRequestDTO() {
     }
 
-    public Date getFrom() {
+    public String getFrom() {
         return from;
     }
 
-    public void setFrom(Date from) {
+    public void setFrom(String from) {
         this.from = from;
     }
 
-    public Date getTo() {
+    public String getTo() {
         return to;
     }
 
-    public void setTo(Date to) {
+    public void setTo(String to) {
         this.to = to;
     }
 
-    public String getAccountNumber() {
-        return accountNumber;
+    public String getBban() {
+        return bban;
     }
 
-    public void setAccountNumber(String accountNumber) {
-        this.accountNumber = accountNumber;
+    public void setBban(String bban) {
+        this.bban = bban;
+    }
+
+    public String getAuthorizationCode() {
+        return authorizationCode;
+    }
+
+    public void setAuthorizationCode(String authorizationCode) {
+        this.authorizationCode = authorizationCode;
     }
 }

@@ -70,6 +70,8 @@ public class ZeebeWorkers {
                     variables.put(RECONCILIATION_ENABLED, exchange.getProperty(RECONCILIATION_ENABLED));
                     variables.put(TRANSFER_FAILED, transferFailed);
 
+                    zeebeClient.newCompleteCommand(job.getKey())
+                            .variables(variables).send();
                 })
                 .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)
@@ -81,6 +83,8 @@ public class ZeebeWorkers {
                     logger.info("Job '{}' started from process '{}' with key {}", job.getType(), job.getBpmnProcessId(), job.getKey());
                     Map<String, Object> variables = job.getVariablesAsMap();
 
+                    variables.put(RECONCILIATION_RETRY, variables.getOrDefault(RECONCILIATION_RETRY, 1));
+
                     Exchange exchange = new DefaultExchange(camelContext);
                     exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
                     exchange.setProperty(SERVER_FILE_NAME, variables.get(FILE_NAME));
@@ -90,6 +94,21 @@ public class ZeebeWorkers {
 
                     producerTemplate.send("direct:reconciliation-route", exchange);
 
+                    boolean isReconciliationSuccess = exchange.getProperty(RECONCILIATION_SUCCESS, Boolean.class);
+                    variables.put(RECONCILIATION_SUCCESS, isReconciliationSuccess);
+
+                    if (!isReconciliationSuccess) {
+                        variables.put(ERROR_CODE, exchange.getProperty(ERROR_CODE));
+                        variables.put(ERROR_DESCRIPTION, exchange.getProperty(ERROR_DESCRIPTION));
+                    }
+
+                    variables.put(TOTAL_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(ONGOING_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(FAILED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(COMPLETED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+
+                    zeebeClient.newCompleteCommand(job.getKey())
+                            .variables(variables).send();
                 })
                 .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)
