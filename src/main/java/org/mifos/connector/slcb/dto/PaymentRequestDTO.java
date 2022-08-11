@@ -11,7 +11,7 @@ public class PaymentRequestDTO {
     public String batchID;
     public String institutionCode;
     public String purpose;
-    public Date requestDate;
+    public String requestDate;
     public String sourceAccount;
     public Status status;
     public double totalAmountPaid;
@@ -69,11 +69,11 @@ public class PaymentRequestDTO {
         this.purpose = purpose;
     }
 
-    public Date getRequestDate() {
+    public String getRequestDate() {
         return requestDate;
     }
 
-    public void setRequestDate(Date requestDate) {
+    public void setRequestDate(String requestDate) {
         this.requestDate = requestDate;
     }
 

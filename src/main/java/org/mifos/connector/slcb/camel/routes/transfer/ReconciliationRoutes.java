@@ -5,7 +5,12 @@ import org.apache.camel.model.dataformat.JsonLibrary;
 import org.mifos.connector.slcb.dto.BalanceRequestDTO;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 import org.mifos.connector.slcb.dto.ReconciliationRequestDTO;
+import org.mifos.connector.slcb.dto.Transaction;
 import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
 
@@ -53,12 +58,17 @@ public class ReconciliationRoutes extends BaseSLCBRouteBuilder {
                 .choice()
                 .when(header("CamelHttpResponseCode").isEqualTo("200"))
                 .log(LoggingLevel.INFO, "Balance request successful")
-                .unmarshal().json(JsonLibrary.Jackson, BalanceRequestDTO.class)
+                .unmarshal().json(JsonLibrary.Jackson, PaymentRequestDTO.class)
+                .to("direct:download-file")
+                .to("direct:get-transaction-array")
                 .process(exchange -> {
                     PaymentRequestDTO response = exchange.getIn().getBody(PaymentRequestDTO.class);
                     logger.info("Status: " + response.getStatus());
-                    exchange.setProperty("BODY", response);
+                    exchange.setProperty(SLCB_TRANSACTION_RESPONSE, response);
                 })
+                .to("direct:update-status")
+                .to("direct:update-file")
+                .to("direct:upload-file")
                 .otherwise()
                 .log(LoggingLevel.ERROR, "Balance request unsuccessful")
                 .process(exchange -> exchange.setProperty("BODY", "Fetch balance request unsuccessful"))

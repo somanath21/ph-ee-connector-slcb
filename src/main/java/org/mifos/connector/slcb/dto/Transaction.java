@@ -1,9 +1,10 @@
 package org.mifos.connector.slcb.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder({ "id", "request_id", "payment_mode", "account_number", "amount", "currency", "note" })
-public class Transaction {
+public class Transaction implements CsvSchema {
 
     private int id;
     private String request_id;
@@ -13,6 +14,8 @@ public class Transaction {
     private String currency;
     private String note;
     private String batchId;
+    @JsonIgnore
+    private String status;
 
 
     public int getId() {
@@ -79,6 +82,14 @@ public class Transaction {
         this.batchId = batchId;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return "Transaction{" +
@@ -90,6 +101,25 @@ public class Transaction {
                 ", currency='" + currency + '\'' +
                 ", note='" + note + '\'' +
                 ", batchId='" + batchId + '\'' +
+                ", status='" + status + '\'' +
                 '}';
+    }
+
+    @JsonIgnore
+    @Override
+    public String getCsvString() {
+        if (!status.isEmpty()) {
+            return String.format("%s,%s,%s,%s,%s,%s,%s,%s", id, request_id, payment_mode, account_number, amount, currency, note, status);
+        }
+        return String.format("%s,%s,%s,%s,%s,%s,%s,%s", id, request_id, payment_mode, account_number, amount, currency, note, status);
+    }
+
+    @JsonIgnore
+    @Override
+    public String getCsvHeader() {
+        if (status.isEmpty()) {
+            return "id,request_id,payment_mode,account_number,amount,currency,note";
+        }
+        return "id,request_id,payment_mode,account_number,amount,currency,note,status";
     }
 }

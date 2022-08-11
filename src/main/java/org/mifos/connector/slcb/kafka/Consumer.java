@@ -8,6 +8,7 @@ import org.mifos.connector.slcb.zeebe.ZeebeProcessStarter;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+@Deprecated
 public class Consumer {
 
     private final ProducerTemplate producerTemplate;
@@ -24,7 +25,7 @@ public class Consumer {
         this.zeebeProcessStarter = zeebeProcessStarter;
     }
 
-    @KafkaListener(topics = "${kafka.topic.slcb.name}", groupId = "group_id")
+    //@KafkaListener(topics = "${kafka.topic.slcb.name}", groupId = "group_id")
     public void listenTopicSlcb(String message) throws JsonProcessingException {
         System.out.println("Received Message in topic SLCB and group group_id: " + message);
         Transaction transaction = objectMapper.readValue((String) message, Transaction.class);

@@ -8,13 +8,15 @@ import org.apache.camel.ProducerTemplate;
 import org.apache.camel.support.DefaultExchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import javax.annotation.PostConstruct;
 import java.util.Map;
-import static org.mifos.connector.slcb.camel.config.CamelProperties.CORRELATION_ID;
-import static org.mifos.connector.slcb.camel.config.CamelProperties.SLCB_CHANNEL_REQUEST;
+
+import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.*;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_FAILED;
 
 @Component
 public class ZeebeWorkers {
@@ -39,6 +41,7 @@ public class ZeebeWorkers {
     @Value("${zeebe.client.evenly-allocated-max-jobs}")
     private int workerMaxJobs;
 
+    @PostConstruct
     public void setupWorkers() {
 
         zeebeClient.newWorker()
@@ -49,9 +52,25 @@ public class ZeebeWorkers {
 
                     Exchange exchange = new DefaultExchange(camelContext);
                     exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
-                    exchange.setProperty(SLCB_CHANNEL_REQUEST, variables.get(SLCB_CHANNEL_REQUEST));
+                    exchange.setProperty(SERVER_FILE_NAME, variables.get(FILE_NAME));
+                    exchange.setProperty(BATCH_ID, variables.get(SUB_BATCH_ID));
+                    exchange.setProperty(REQUEST_ID, variables.get(REQUEST_ID));
+                    exchange.setProperty(PURPOSE, variables.get(PURPOSE));
 
-                    producerTemplate.send("direct:transfer-route", exchange);
+                    producerTemplate.send("direct:slcb-base", exchange);
+
+                    boolean transferFailed = exchange.getProperty(TRANSFER_FAILED, Boolean.class);
+
+                    if (transferFailed) {
+                        variables.put(ERROR_CODE, exchange.getProperty(ERROR_CODE));
+                        variables.put(ERROR_DESCRIPTION, exchange.getProperty(ERROR_DESCRIPTION));
+                    } else {
+                        variables.put(STATUS_CODE, exchange.getProperty(STATUS_CODE));
+                        variables.put(STATUS_DESCRIPTION, exchange.getProperty(STATUS_DESCRIPTION));
+                    }
+
+                    variables.put(RECONCILIATION_ENABLED, exchange.getProperty(RECONCILIATION_ENABLED));
+                    variables.put(TRANSFER_FAILED, transferFailed);
 
                     client.newCompleteCommand(job.getKey())
                             .variables(variables)
@@ -61,10 +80,31 @@ public class ZeebeWorkers {
                 .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)
                 .open();
+
+        zeebeClient.newWorker()
+                .jobType(Worker.SLCB_TRANSFER.toString())
+                .handler((client, job) -> {
+                    logger.info("Job '{}' started from process '{}' with key {}", job.getType(), job.getBpmnProcessId(), job.getKey());
+                    Map<String, Object> variables = job.getVariablesAsMap();
+
+                    Exchange exchange = new DefaultExchange(camelContext);
+                    exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
+                    exchange.setProperty(SERVER_FILE_NAME, variables.get(FILE_NAME));
+                    exchange.setProperty(BATCH_ID, variables.get(SUB_BATCH_ID));
+                    exchange.setProperty(REQUEST_ID, variables.get(REQUEST_ID));
+                    exchange.setProperty(PURPOSE, variables.get(PURPOSE));
+
+                    producerTemplate.send("direct:reconciliation-route", exchange);
+
+                })
+                .name(Worker.SLCB_TRANSFER.toString())
+                .maxJobsActive(workerMaxJobs)
+                .open();
     }
 
     protected enum Worker {
-        SLCB_TRANSFER("slcb-transfer");
+        SLCB_TRANSFER("initiateTransfer"),
+        SLCB_RECONCILIATION("reconciliation");
 
         private final String text;
 

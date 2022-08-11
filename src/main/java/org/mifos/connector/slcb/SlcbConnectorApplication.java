@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.camel.Processor;
 import org.springframework.boot.SpringApplication;
@@ -31,6 +32,11 @@ public class SlcbConnectorApplication {
     @Bean
     public Processor pojoToString(ObjectMapper objectMapper) {
         return exchange -> exchange.getIn().setBody(objectMapper.writeValueAsString(exchange.getIn().getBody()));
+    }
+
+    @Bean
+    public CsvMapper csvMapper() {
+        return new CsvMapper();
     }
 
 }
