@@ -1,4 +1,4 @@
-package org.mifos.connector.slcb.config;
+package org.mifos.connector.slcb.file.config;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;

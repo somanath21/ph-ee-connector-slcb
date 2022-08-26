@@ -12,8 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.Map;
-
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.*;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_FAILED;
 
 @Component
 public class ZeebeWorkers {
@@ -49,11 +50,65 @@ public class ZeebeWorkers {
 
                     Exchange exchange = new DefaultExchange(camelContext);
                     exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
-                    exchange.setProperty(SLCB_CHANNEL_REQUEST, variables.get(SLCB_CHANNEL_REQUEST));
-                    exchange.setProperty(ZEEBE_JOB_KEY, job.getKey());
+                    exchange.setProperty(SERVER_FILE_NAME, variables.get(FILE_NAME));
+                    exchange.setProperty(BATCH_ID, variables.get(SUB_BATCH_ID));
+                    exchange.setProperty(REQUEST_ID, variables.get(REQUEST_ID));
+                    exchange.setProperty(PURPOSE, variables.get(PURPOSE));
 
-                    producerTemplate.asyncSend("direct:transfer-route", exchange);
+                    producerTemplate.send("direct:slcb-base", exchange);
 
+                    boolean transferFailed = exchange.getProperty(TRANSFER_FAILED, Boolean.class);
+
+                    if (transferFailed) {
+                        variables.put(ERROR_CODE, exchange.getProperty(ERROR_CODE));
+                        variables.put(ERROR_DESCRIPTION, exchange.getProperty(ERROR_DESCRIPTION));
+                    } else {
+                        variables.put(STATUS_CODE, exchange.getProperty(STATUS_CODE));
+                        variables.put(STATUS_DESCRIPTION, exchange.getProperty(STATUS_DESCRIPTION));
+                    }
+
+                    variables.put(RECONCILIATION_ENABLED, exchange.getProperty(RECONCILIATION_ENABLED));
+                    variables.put(TRANSFER_FAILED, transferFailed);
+
+                    zeebeClient.newCompleteCommand(job.getKey())
+                            .variables(variables).send();
+                })
+                .name(Worker.SLCB_TRANSFER.toString())
+                .maxJobsActive(workerMaxJobs)
+                .open();
+
+        zeebeClient.newWorker()
+                .jobType(Worker.SLCB_TRANSFER.toString())
+                .handler((client, job) -> {
+                    logger.info("Job '{}' started from process '{}' with key {}", job.getType(), job.getBpmnProcessId(), job.getKey());
+                    Map<String, Object> variables = job.getVariablesAsMap();
+
+                    variables.put(RECONCILIATION_RETRY, variables.getOrDefault(RECONCILIATION_RETRY, 1));
+
+                    Exchange exchange = new DefaultExchange(camelContext);
+                    exchange.setProperty(CORRELATION_ID, variables.get("transactionId"));
+                    exchange.setProperty(SERVER_FILE_NAME, variables.get(FILE_NAME));
+                    exchange.setProperty(BATCH_ID, variables.get(SUB_BATCH_ID));
+                    exchange.setProperty(REQUEST_ID, variables.get(REQUEST_ID));
+                    exchange.setProperty(PURPOSE, variables.get(PURPOSE));
+
+                    producerTemplate.send("direct:reconciliation-route", exchange);
+
+                    boolean isReconciliationSuccess = exchange.getProperty(RECONCILIATION_SUCCESS, Boolean.class);
+                    variables.put(RECONCILIATION_SUCCESS, isReconciliationSuccess);
+
+                    if (!isReconciliationSuccess) {
+                        variables.put(ERROR_CODE, exchange.getProperty(ERROR_CODE));
+                        variables.put(ERROR_DESCRIPTION, exchange.getProperty(ERROR_DESCRIPTION));
+                    }
+
+                    variables.put(TOTAL_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(ONGOING_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(FAILED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(COMPLETED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+
+                    zeebeClient.newCompleteCommand(job.getKey())
+                            .variables(variables).send();
                 })
                 .name(Worker.SLCB_TRANSFER.toString())
                 .maxJobsActive(workerMaxJobs)

@@ -9,8 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.util.Map;
+
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
-import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_STATE;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.*;
 
 @Component
 public class TransferResponseProcessor implements Processor {
@@ -28,14 +29,21 @@ public class TransferResponseProcessor implements Processor {
 
         Map<String, Object> variables = (Map<String, Object>) exchange.getProperty(ZEEBE_VARIABLES);
 
-        Object hasTransferFailed = exchange.getProperty(TRANSACTION_FAILED);
+        Object hasTransferFailed = exchange.getProperty(TRANSFER_FAILED);
 
         if (hasTransferFailed != null && (boolean)hasTransferFailed) {
-            variables.put(TRANSACTION_FAILED, true);
+            variables.put(TRANSFER_FAILED, true);
             variables.put(ERROR_INFORMATION, exchange.getIn().getBody(String.class));
         } else {
             variables.put(TRANSFER_STATE, "COMMITTED");
-            variables.put(TRANSACTION_FAILED, false);
+            variables.put(TRANSFER_FAILED, false);
+
+            zeebeClient.newPublishMessageCommand()
+                    .messageName(TRANSFER_MESSAGE)
+                    .correlationKey(exchange.getProperty(TRANSACTION_ID, String.class))
+                    .variables(variables)
+                    .send()
+                    .join();
         }
         exchange.setProperty(ZEEBE_VARIABLES, variables);
     }

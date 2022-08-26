@@ -4,9 +4,11 @@ import org.mifos.connector.common.gsma.dto.GSMATransaction;
 import org.mifos.connector.common.gsma.dto.GsmaParty;
 import org.mifos.connector.slcb.dto.Payee;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
+import org.mifos.connector.slcb.dto.Transaction;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class SLCBUtils {
 
@@ -53,6 +55,21 @@ public class SLCBUtils {
         gsmaTransaction.setAmount(""+SLCBPayee.getAmount());
         gsmaTransaction.setCreditParty(creditParty);
         return gsmaTransaction;
+    }
+
+    public static Payee convertTransactionToPayee(Transaction transaction) {
+        Payee payee = new Payee();
+        payee.setId(""+transaction.getId());
+        payee.setAccount(transaction.getAccount_number());
+        payee.setAmount(Double.parseDouble(transaction.getAmount()));
+        payee.setExternalTransactionId(transaction.getId());
+        payee.setFirstName("Unknown");
+        payee.setLastName("Unknown");
+        payee.setPurpose(transaction.getNote());
+        payee.setStatus(null);
+        payee.setStatusMessage(null);
+        payee.setTransactionId(null);
+        return payee;
     }
 
 }

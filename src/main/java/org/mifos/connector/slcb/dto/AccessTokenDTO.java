@@ -6,12 +6,28 @@ public class AccessTokenDTO {
     public String password;
     public String token;
 
+    public int expiresIn;
+
     public AccessTokenDTO() {
     }
 
     public AccessTokenDTO(String username, String password) {
         this.username = username;
         this.password = password;
+    }
+
+    public AccessTokenDTO(String username, String password, int expiresIn) {
+        this.username = username;
+        this.password = password;
+        this.expiresIn = expiresIn;
+    }
+
+    public int getExpiresIn() {
+        return expiresIn;
+    }
+
+    public void setExpiresIn(int expiresIn) {
+        this.expiresIn = expiresIn;
     }
 
     public String getUsername() {

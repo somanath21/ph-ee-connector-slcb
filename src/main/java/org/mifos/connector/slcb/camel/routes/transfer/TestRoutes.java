@@ -1,15 +1,14 @@
 package org.mifos.connector.slcb.camel.routes.transfer;
 
 import org.apache.camel.builder.RouteBuilder;
-import org.mifos.connector.slcb.config.AwsFileTransferService;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
+import org.mifos.connector.slcb.file.FileTransferService;
 import org.mifos.connector.slcb.utils.CsvUtils;
 import org.mifos.connector.slcb.zeebe.ZeebeProcessStarter;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.util.*;
 
 import static org.mifos.connector.slcb.camel.config.CamelProperties.SLCB_CHANNEL_REQUEST;
@@ -19,9 +18,9 @@ public class TestRoutes extends RouteBuilder {
 
     private final ZeebeProcessStarter zeebeProcessStarter;
 
-    private final AwsFileTransferService fileTransferService;
+    private final FileTransferService fileTransferService;
 
-    public TestRoutes(ZeebeProcessStarter zeebeProcessStarter, AwsFileTransferService fileTransferService) {
+    public TestRoutes(ZeebeProcessStarter zeebeProcessStarter, @Qualifier("awsStorage") FileTransferService fileTransferService) {
         this.zeebeProcessStarter = zeebeProcessStarter;
         this.fileTransferService = fileTransferService;
     }
@@ -63,8 +62,8 @@ public class TestRoutes extends RouteBuilder {
 
                     File file = CsvUtils.createCSVFile(paymentRequestDTOList, PaymentRequestDTO.class);
                     System.out.println(file.getAbsolutePath());
-                    String result = fileTransferService.uploadFile(file);
-                    exchange.getIn().setBody(result);
+                    //String result = fileTransferService.uploadFile(file);
+                    //exchange.getIn().setBody(result);
                 });
 
         from("rest:post:test/transferRequest")

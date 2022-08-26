@@ -35,6 +35,21 @@ public class SLCBConfig {
     @Value("${slcb.signature.key}")
     public String signatureKey;
 
+    @Value("${slcb.account.number}")
+    public String sourceAccount;
+
+    @Value("${slcb.account.type}")
+    public int accountType;
+
+    @Value("${slcb.institutionCode}")
+    public String institutionCode;
+
+    @Value("${config.reconciliation.enable}")
+    public boolean isReconciliationEnabled;
+
+    @Value("${config.date-format}")
+    public String dateFormat;
+
     public String authUrl;
     public String transactionRequestUrl;
     public String reconciliationUrl;

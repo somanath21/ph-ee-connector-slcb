@@ -1,33 +1,35 @@
 package org.mifos.connector.slcb.camel.routes.transfer;
 
+import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.mifos.connector.common.gsma.dto.GSMATransaction;
-import org.mifos.connector.slcb.config.AwsFileTransferService;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
+import org.mifos.connector.slcb.dto.Status;
+import org.mifos.connector.slcb.dto.Transaction;
+import org.mifos.connector.slcb.file.FileTransferService;
 import org.mifos.connector.slcb.utils.CsvUtils;
 import org.mifos.connector.slcb.utils.SLCBUtils;
-import org.mifos.connector.slcb.utils.SecurityUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 import static org.mifos.connector.slcb.camel.config.CamelProperties.*;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.*;
+import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_FAILED;
 
 @Component
 public class TransferRoutes extends BaseSLCBRouteBuilder {
 
     private final TransferResponseProcessor transferResponseProcessor;
 
-    private final AwsFileTransferService awsFileTransferService;
+    private final FileTransferService fileTransferService;
 
-    private final
-    ZeebeCompleteCommandPublisher zeebeCompleteCommandPublisher;
-
-    public TransferRoutes(TransferResponseProcessor transferResponseProcessor, AwsFileTransferService awsFileTransferService, ZeebeCompleteCommandPublisher zeebeCompleteCommandPublisher) {
+    public TransferRoutes(TransferResponseProcessor transferResponseProcessor, @Qualifier("awsStorage") FileTransferService fileTransferService) {
         this.transferResponseProcessor = transferResponseProcessor;
-        this.awsFileTransferService = awsFileTransferService;
-        this.zeebeCompleteCommandPublisher = zeebeCompleteCommandPublisher;
+        this.fileTransferService = fileTransferService;
     }
 
     @Override
@@ -46,7 +48,8 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .log(LoggingLevel.INFO, "Status: ${header.CamelHttpResponseCode}")
                 .log(LoggingLevel.INFO, "Transaction API response: ${body}")
                 .to("direct:transaction-response-handler")
-                .process(zeebeCompleteCommandPublisher);
+                .marshal().json(JsonLibrary.Jackson)
+                .setBody(exchange -> exchange.getIn().getBody());
 
         /*
          * Route to handle async API responses
@@ -63,29 +66,30 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                     logger.info("Status: " + paymentRequestDTO.getStatus());
                 }
                 )
-                .to("direct:upload-to-s3")
+                .to("direct:update-status")
+                .to("direct:update-file")
+                .to("direct:upload-file")
+                .setProperty(TRANSFER_FAILED, constant(false))
                 .otherwise()
                 .log(LoggingLevel.ERROR, "Transaction request unsuccessful")
                 .process(exchange -> {
                     exchange.setProperty(TRANSACTION_ID, exchange.getProperty(CORRELATION_ID)); // TODO: Improve this
+                    exchange.setProperty(ERROR_CODE, exchange.getIn().getHeader(Exchange.HTTP_RESPONSE_CODE));
+                    exchange.setProperty(ERROR_DESCRIPTION, exchange.getIn().getBody(String.class));
                 })
-                .setProperty(TRANSACTION_FAILED, constant(true))
-                .process(transferResponseProcessor)
-                .endChoice();
+                .setProperty(TRANSFER_FAILED, constant(true));
 
         /*
          * Calls SLCB API to commit transaction
          */
         getBaseAuthDefinitionBuilder("direct:commit-transaction", HttpRequestMethod.POST)
-                .process(exchange -> {
-                    String signedBody = SecurityUtils.signContent(UUID.randomUUID().toString(), slcbConfig.signatureKey);
+                /*.process(exchange -> {
                     String prop = exchange.getProperty(SLCB_CHANNEL_REQUEST, String.class);
                     logger.info("Properties: " + prop);
                     PaymentRequestDTO slcbChannelRequestBody = objectMapper.readValue(
                             prop, PaymentRequestDTO.class);
-                    slcbChannelRequestBody.setAuthorizationCode(signedBody);
                     exchange.setProperty(SLCB_CHANNEL_REQUEST, slcbChannelRequestBody);
-                })
+                })*/
                 .setBody(exchange -> exchange.getProperty(SLCB_CHANNEL_REQUEST))
                 .marshal().json(JsonLibrary.Jackson)
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
@@ -102,8 +106,33 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                             PaymentRequestDTO.class);
                     List<GSMATransaction> transactionList = SLCBUtils.convertPaymentRequestDto(paymentRequestDTO);
                     File csvFile = CsvUtils.createCSVFile(transactionList, GSMATransaction.class);
-                    String fileName = awsFileTransferService.uploadFile(csvFile);
-                    logger.info("Uploaded CSV in S3 with name: " + fileName);
+                    //String fileName = fileTransferService.uploadFile(csvFile);
+                    //logger.info("Uploaded CSV in S3 with name: " + fileName);
+                });
+
+        from("direct:update-status")
+                .id("direct:update-status")
+                .log("Starting route direct:update-status")
+                .process(exchange -> {
+                    List<Transaction> transactionList = exchange.getProperty(TRANSACTION_LIST, List.class);
+                    PaymentRequestDTO paymentRequestDTO = exchange.getProperty(SLCB_TRANSACTION_RESPONSE,
+                            PaymentRequestDTO.class);
+                    Status status = paymentRequestDTO.getStatus();
+                    exchange.setProperty(STATUS_CODE, status.code);
+                    exchange.setProperty(STATUS_DESCRIPTION, status.getDescription());
+
+                    Map<Integer, Integer> idIndexMap = new HashMap<>();
+                    for (int i = 0; i < transactionList.size(); i++) {
+                        idIndexMap.put(transactionList.get(i).getId(), i);
+                    }
+
+                    paymentRequestDTO.getPayees().forEach(payee -> {
+                        int index = idIndexMap.get(payee.getExternalTransactionId());
+                        transactionList.get(index).setStatus(payee.getStatusMessage());
+                    });
+
+                    exchange.setProperty(TRANSACTION_LIST, transactionList);
+                    exchange.setProperty(OVERRIDE_HEADER, true);
                 });
 
     }
