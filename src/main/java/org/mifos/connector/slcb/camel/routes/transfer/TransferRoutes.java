@@ -3,16 +3,11 @@ package org.mifos.connector.slcb.camel.routes.transfer;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
-import org.mifos.connector.common.gsma.dto.GSMATransaction;
+import org.mifos.connector.slcb.dto.Payee;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 import org.mifos.connector.slcb.dto.Status;
 import org.mifos.connector.slcb.dto.Transaction;
-import org.mifos.connector.slcb.file.FileTransferService;
-import org.mifos.connector.slcb.utils.CsvUtils;
-import org.mifos.connector.slcb.utils.SLCBUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,15 +17,6 @@ import static org.mifos.connector.slcb.zeebe.ZeebeVariables.TRANSFER_FAILED;
 
 @Component
 public class TransferRoutes extends BaseSLCBRouteBuilder {
-
-    private final TransferResponseProcessor transferResponseProcessor;
-
-    private final FileTransferService fileTransferService;
-
-    public TransferRoutes(TransferResponseProcessor transferResponseProcessor, @Qualifier("awsStorage") FileTransferService fileTransferService) {
-        this.transferResponseProcessor = transferResponseProcessor;
-        this.fileTransferService = fileTransferService;
-    }
 
     @Override
     public void configure() {
@@ -47,9 +33,7 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .to("direct:commit-transaction")
                 .log(LoggingLevel.INFO, "Status: ${header.CamelHttpResponseCode}")
                 .log(LoggingLevel.INFO, "Transaction API response: ${body}")
-                .to("direct:transaction-response-handler")
-                .marshal().json(JsonLibrary.Jackson)
-                .setBody(exchange -> exchange.getIn().getBody());
+                .to("direct:transaction-response-handler");
 
         /*
          * Route to handle async API responses
@@ -76,39 +60,22 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                     exchange.setProperty(TRANSACTION_ID, exchange.getProperty(CORRELATION_ID)); // TODO: Improve this
                     exchange.setProperty(ERROR_CODE, exchange.getIn().getHeader(Exchange.HTTP_RESPONSE_CODE));
                     exchange.setProperty(ERROR_DESCRIPTION, exchange.getIn().getBody(String.class));
+
+                    exchange.setProperty(ONGOING_TRANSACTION, 0);
+                    exchange.setProperty(FAILED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    exchange.setProperty(COMPLETED_TRANSACTION, 0);
                 })
+                .to("direct:delete-local-file")
                 .setProperty(TRANSFER_FAILED, constant(true));
 
         /*
          * Calls SLCB API to commit transaction
          */
         getBaseAuthDefinitionBuilder("direct:commit-transaction", HttpRequestMethod.POST)
-                /*.process(exchange -> {
-                    String prop = exchange.getProperty(SLCB_CHANNEL_REQUEST, String.class);
-                    logger.info("Properties: " + prop);
-                    PaymentRequestDTO slcbChannelRequestBody = objectMapper.readValue(
-                            prop, PaymentRequestDTO.class);
-                    exchange.setProperty(SLCB_CHANNEL_REQUEST, slcbChannelRequestBody);
-                })*/
                 .setBody(exchange -> exchange.getProperty(SLCB_CHANNEL_REQUEST))
                 .marshal().json(JsonLibrary.Jackson)
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
                 .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false");
-
-        /*
-         * Generates and uploads the CSV to AWS S3
-         */
-        from("direct:upload-to-s3")
-                .id("upload-to-s3")
-                .log(LoggingLevel.INFO, "Uploading to S3 route started.")
-                .process(exchange -> {
-                    PaymentRequestDTO paymentRequestDTO = exchange.getProperty(SLCB_TRANSACTION_RESPONSE,
-                            PaymentRequestDTO.class);
-                    List<GSMATransaction> transactionList = SLCBUtils.convertPaymentRequestDto(paymentRequestDTO);
-                    File csvFile = CsvUtils.createCSVFile(transactionList, GSMATransaction.class);
-                    //String fileName = fileTransferService.uploadFile(csvFile);
-                    //logger.info("Uploaded CSV in S3 with name: " + fileName);
-                });
 
         from("direct:update-status")
                 .id("direct:update-status")
@@ -126,13 +93,28 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                         idIndexMap.put(transactionList.get(i).getId(), i);
                     }
 
-                    paymentRequestDTO.getPayees().forEach(payee -> {
+                    int failed = 0;
+                    int ongoing = 0;
+                    int completed = 0;
+
+                    for (Payee payee: paymentRequestDTO.getPayees()) {
                         int index = idIndexMap.get(payee.getExternalTransactionId());
                         transactionList.get(index).setStatus(payee.getStatusMessage());
-                    });
+
+                        if (payee.getStatus().getCode() == 0) {
+                            completed++;
+                        } else if (payee.getStatus().getCode() == 1) {
+                            ongoing++;
+                        } else {
+                            failed++;
+                        }
+                    }
 
                     exchange.setProperty(TRANSACTION_LIST, transactionList);
                     exchange.setProperty(OVERRIDE_HEADER, true);
+                    exchange.setProperty(ONGOING_TRANSACTION, ongoing);
+                    exchange.setProperty(FAILED_TRANSACTION, failed);
+                    exchange.setProperty(COMPLETED_TRANSACTION, completed);
                 });
 
     }

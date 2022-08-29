@@ -57,9 +57,10 @@ public class ZeebeWorkers {
 
                     producerTemplate.send("direct:slcb-base", exchange);
 
-                    boolean transferFailed = exchange.getProperty(TRANSFER_FAILED, Boolean.class);
+                    Boolean transferFailed = exchange.getProperty(TRANSFER_FAILED, Boolean.class);
 
-                    if (transferFailed) {
+                    if (transferFailed == null || transferFailed) {
+                        transferFailed = true;
                         variables.put(ERROR_CODE, exchange.getProperty(ERROR_CODE));
                         variables.put(ERROR_DESCRIPTION, exchange.getProperty(ERROR_DESCRIPTION));
                     } else {
@@ -69,6 +70,10 @@ public class ZeebeWorkers {
 
                     variables.put(RECONCILIATION_ENABLED, exchange.getProperty(RECONCILIATION_ENABLED));
                     variables.put(TRANSFER_FAILED, transferFailed);
+                    variables.put(TOTAL_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(ONGOING_TRANSACTION, exchange.getProperty(ONGOING_TRANSACTION));
+                    variables.put(FAILED_TRANSACTION, exchange.getProperty(FAILED_TRANSACTION));
+                    variables.put(COMPLETED_TRANSACTION, exchange.getProperty(COMPLETED_TRANSACTION));
 
                     zeebeClient.newCompleteCommand(job.getKey())
                             .variables(variables).send();
@@ -78,7 +83,7 @@ public class ZeebeWorkers {
                 .open();
 
         zeebeClient.newWorker()
-                .jobType(Worker.SLCB_TRANSFER.toString())
+                .jobType(Worker.RECONCILIATION.toString())
                 .handler((client, job) -> {
                     logger.info("Job '{}' started from process '{}' with key {}", job.getType(), job.getBpmnProcessId(), job.getKey());
                     Map<String, Object> variables = job.getVariablesAsMap();
@@ -106,6 +111,8 @@ public class ZeebeWorkers {
                     variables.put(ONGOING_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
                     variables.put(FAILED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
                     variables.put(COMPLETED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+
+                    logger.info("Setting zeebe variable: {}", variables);
 
                     zeebeClient.newCompleteCommand(job.getKey())
                             .variables(variables).send();

@@ -65,8 +65,13 @@ public class SLCBBaseRoutes extends BaseSLCBRouteBuilder {
                     paymentRequestDTO.setTotalAmountToBePaid(amountToBePaid.get());
                     paymentRequestDTO.setPayees(payees);
 
+                    logger.info("Payment Request DTO: {}", paymentRequestDTO.toString());
                     exchange.setProperty(SLCB_CHANNEL_REQUEST, paymentRequestDTO);
                     exchange.setProperty(RECONCILIATION_ENABLED, slcbConfig.isReconciliationEnabled);
+                    exchange.setProperty(TOTAL_TRANSACTION, transactionList.size());
+                    exchange.setProperty(ONGOING_TRANSACTION, transactionList.size());
+                    exchange.setProperty(FAILED_TRANSACTION, 0);
+                    exchange.setProperty(COMPLETED_TRANSACTION, 0);
                 });
     }
 }
