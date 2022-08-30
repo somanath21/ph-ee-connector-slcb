@@ -28,11 +28,11 @@ public class ZeebeVariables {
 
     public static final String RECONCILIATION_RETRY = "reconciliationRetry";
 
-    public static final String TOTAL_TRANSACTION = "TOTAL_TRANSACTIONS";
+    public static final String TOTAL_TRANSACTION = "totalTransactions";
 
-    public static final String ONGOING_TRANSACTION = "ONGOING";
+    public static final String ONGOING_TRANSACTION = "ongoingTransactions";
 
-    public static final String FAILED_TRANSACTION = "FAILED";
+    public static final String FAILED_TRANSACTION = "failedTransactions";
 
-    public static final String COMPLETED_TRANSACTION = "COMPLETED";
+    public static final String COMPLETED_TRANSACTION = "completedTransactions";
 }

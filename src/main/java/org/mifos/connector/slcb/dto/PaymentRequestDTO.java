@@ -116,4 +116,22 @@ public class PaymentRequestDTO {
     public void setPayees(List<Payee> payees) {
         this.payees = payees;
     }
+
+    @Override
+    public String toString() {
+        return "PaymentRequestDTO{" +
+                "id='" + id + '\'' +
+                ", accountType=" + accountType +
+                ", authorizationCode='" + authorizationCode + '\'' +
+                ", batchID='" + batchID + '\'' +
+                ", institutionCode='" + institutionCode + '\'' +
+                ", purpose='" + purpose + '\'' +
+                ", requestDate='" + requestDate + '\'' +
+                ", sourceAccount='" + sourceAccount + '\'' +
+                ", status=" + status +
+                ", totalAmountPaid=" + totalAmountPaid +
+                ", totalAmountToBePaid=" + totalAmountToBePaid +
+                ", payees=" + payees +
+                '}';
+    }
 }
