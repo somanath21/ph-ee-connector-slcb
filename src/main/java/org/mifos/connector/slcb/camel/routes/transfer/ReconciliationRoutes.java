@@ -3,6 +3,7 @@ package org.mifos.connector.slcb.camel.routes.transfer;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
+import org.mifos.connector.slcb.dto.Payee;
 import org.mifos.connector.slcb.dto.PaymentRequestDTO;
 import org.mifos.connector.slcb.dto.ReconciliationRequestDTO;
 import org.mifos.connector.slcb.utils.SecurityUtils;
@@ -98,26 +99,36 @@ public class ReconciliationRoutes extends BaseSLCBRouteBuilder {
                     PaymentRequestDTO paymentRequestDTO = exchange.getProperty(SLCB_TRANSACTION_RESPONSE,
                             PaymentRequestDTO.class);
 
-                    int totalTxn = 0;
-                    AtomicInteger failedTxn = new AtomicInteger();
+                    int failedTxn = 0;
                     int ongoingTxn = 0;
-                    AtomicInteger completedTxn = new AtomicInteger();
+                    int completedTxn = 0;
 
-                    totalTxn = paymentRequestDTO.getPayees().size();
+                    long ongoingAmount = 0L;
+                    long failedAmount = 0L;
+                    long completedAmount = 0L;
 
-                    paymentRequestDTO.getPayees().forEach(payee -> {
+                    for (Payee payee: paymentRequestDTO.getPayees()) {
                         if (payee.getStatus().getCode() == 0) {
                             // 0 is the SLCB success code
-                            completedTxn.getAndIncrement();
+                            completedTxn++;
+                            completedAmount += payee.getAmount();
+                            ongoingAmount -= payee.getAmount();
+                        } else if (payee.getStatus().getCode() == 1) {
+                            ongoingTxn++;
+                            ongoingAmount += payee.getAmount();
                         } else {
-                            failedTxn.getAndIncrement();
+                            failedTxn++;
+                            failedAmount += payee.getAmount();
+                            ongoingAmount -= payee.getAmount();
                         }
-                    });
+                    }
 
-                    exchange.setProperty(TOTAL_TRANSACTION, totalTxn);
                     exchange.setProperty(ONGOING_TRANSACTION, ongoingTxn);
                     exchange.setProperty(FAILED_TRANSACTION, failedTxn);
                     exchange.setProperty(COMPLETED_TRANSACTION, completedTxn);
+                    exchange.setProperty(ONGOING_AMOUNT, ongoingAmount);
+                    exchange.setProperty(FAILED_AMOUNT, failedAmount);
+                    exchange.setProperty(COMPLETED_AMOUNT, completedAmount);
 
                     double percentage = paymentRequestDTO.getTotalAmountToBePaid() / paymentRequestDTO.getTotalAmountPaid();
                     percentage *= 100;

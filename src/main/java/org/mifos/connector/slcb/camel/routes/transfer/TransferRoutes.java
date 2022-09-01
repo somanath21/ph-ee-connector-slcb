@@ -64,6 +64,10 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                     exchange.setProperty(ONGOING_TRANSACTION, 0);
                     exchange.setProperty(FAILED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
                     exchange.setProperty(COMPLETED_TRANSACTION, 0);
+
+                    exchange.setProperty(ONGOING_AMOUNT, 0);
+                    exchange.setProperty(FAILED_AMOUNT, exchange.getProperty(FAILED_AMOUNT));
+                    exchange.setProperty(COMPLETED_AMOUNT, 0);
                 })
                 .to("direct:delete-local-file")
                 .setProperty(TRANSFER_FAILED, constant(true));
@@ -97,16 +101,25 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                     int ongoing = 0;
                     int completed = 0;
 
+                    long ongoingAmount = 0L;
+                    long failedAmount = 0L;
+                    long completedAmount = 0L;
+
                     for (Payee payee: paymentRequestDTO.getPayees()) {
                         int index = idIndexMap.get(payee.getExternalTransactionId());
                         transactionList.get(index).setStatus(payee.getStatusMessage());
 
                         if (payee.getStatus().getCode() == 0) {
                             completed++;
+                            completedAmount += payee.getAmount();
+                            ongoingAmount -= payee.getAmount();
                         } else if (payee.getStatus().getCode() == 1) {
                             ongoing++;
+                            ongoingAmount += payee.getAmount();
                         } else {
                             failed++;
+                            failedAmount += payee.getAmount();
+                            ongoingAmount -= payee.getAmount();
                         }
                     }
 
@@ -115,6 +128,9 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                     exchange.setProperty(ONGOING_TRANSACTION, ongoing);
                     exchange.setProperty(FAILED_TRANSACTION, failed);
                     exchange.setProperty(COMPLETED_TRANSACTION, completed);
+                    exchange.setProperty(ONGOING_AMOUNT, ongoingAmount);
+                    exchange.setProperty(FAILED_AMOUNT, failedAmount);
+                    exchange.setProperty(COMPLETED_AMOUNT, completedAmount);
                 });
 
     }
