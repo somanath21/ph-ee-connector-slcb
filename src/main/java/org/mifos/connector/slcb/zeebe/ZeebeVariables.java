@@ -35,4 +35,12 @@ public class ZeebeVariables {
     public static final String FAILED_TRANSACTION = "failedTransactions";
 
     public static final String COMPLETED_TRANSACTION = "completedTransactions";
+
+    public static final String TOTAL_AMOUNT = "totalAmount";
+
+    public static final String ONGOING_AMOUNT = "ongoingAmount";
+
+    public static final String FAILED_AMOUNT = "failedAmount";
+
+    public static final String COMPLETED_AMOUNT = "completedAmount";
 }

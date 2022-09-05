@@ -54,6 +54,10 @@ public class ZeebeWorkers {
                     exchange.setProperty(BATCH_ID, variables.get(SUB_BATCH_ID));
                     exchange.setProperty(REQUEST_ID, variables.get(REQUEST_ID));
                     exchange.setProperty(PURPOSE, variables.get(PURPOSE));
+                    exchange.setProperty(TOTAL_AMOUNT, variables.get(TOTAL_AMOUNT));
+                    exchange.setProperty(ONGOING_AMOUNT, variables.get(ONGOING_AMOUNT));
+                    exchange.setProperty(FAILED_AMOUNT, variables.get(FAILED_AMOUNT));
+                    exchange.setProperty(COMPLETED_AMOUNT, variables.get(COMPLETED_AMOUNT));
 
                     producerTemplate.send("direct:slcb-base", exchange);
 
@@ -74,6 +78,9 @@ public class ZeebeWorkers {
                     variables.put(ONGOING_TRANSACTION, exchange.getProperty(ONGOING_TRANSACTION));
                     variables.put(FAILED_TRANSACTION, exchange.getProperty(FAILED_TRANSACTION));
                     variables.put(COMPLETED_TRANSACTION, exchange.getProperty(COMPLETED_TRANSACTION));
+                    variables.put(ONGOING_AMOUNT, exchange.getProperty(ONGOING_AMOUNT));
+                    variables.put(FAILED_AMOUNT, exchange.getProperty(FAILED_AMOUNT));
+                    variables.put(COMPLETED_AMOUNT, exchange.getProperty(COMPLETED_AMOUNT));
 
                     zeebeClient.newCompleteCommand(job.getKey())
                             .variables(variables).send();
@@ -96,6 +103,14 @@ public class ZeebeWorkers {
                     exchange.setProperty(BATCH_ID, variables.get(SUB_BATCH_ID));
                     exchange.setProperty(REQUEST_ID, variables.get(REQUEST_ID));
                     exchange.setProperty(PURPOSE, variables.get(PURPOSE));
+                    exchange.setProperty(TOTAL_TRANSACTION, variables.get(TOTAL_TRANSACTION));
+                    exchange.setProperty(ONGOING_TRANSACTION, variables.get(ONGOING_TRANSACTION));
+                    exchange.setProperty(FAILED_TRANSACTION, variables.get(FAILED_TRANSACTION));
+                    exchange.setProperty(COMPLETED_TRANSACTION, variables.get(COMPLETED_TRANSACTION));
+                    exchange.setProperty(TOTAL_AMOUNT, variables.get(TOTAL_AMOUNT));
+                    exchange.setProperty(ONGOING_AMOUNT, variables.get(ONGOING_AMOUNT));
+                    exchange.setProperty(FAILED_AMOUNT, variables.get(FAILED_AMOUNT));
+                    exchange.setProperty(COMPLETED_AMOUNT, variables.get(COMPLETED_AMOUNT));
 
                     producerTemplate.send("direct:reconciliation-route", exchange);
 
@@ -111,6 +126,9 @@ public class ZeebeWorkers {
                     variables.put(ONGOING_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
                     variables.put(FAILED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
                     variables.put(COMPLETED_TRANSACTION, exchange.getProperty(TOTAL_TRANSACTION));
+                    variables.put(ONGOING_AMOUNT, exchange.getProperty(ONGOING_AMOUNT));
+                    variables.put(FAILED_AMOUNT, exchange.getProperty(FAILED_AMOUNT));
+                    variables.put(COMPLETED_AMOUNT, exchange.getProperty(COMPLETED_AMOUNT));
 
                     logger.info("Setting zeebe variable: {}", variables);
 
