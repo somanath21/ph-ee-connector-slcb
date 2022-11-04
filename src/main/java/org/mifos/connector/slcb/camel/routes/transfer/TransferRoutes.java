@@ -4,6 +4,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.model.dataformat.JsonLibrary;
 import org.mifos.connector.slcb.dto.*;
+import org.mifos.connector.slcb.utils.SLCBUtils;
 import org.mifos.connector.slcb.utils.TransactionUtils;
 import org.springframework.stereotype.Component;
 
@@ -87,7 +88,8 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                 .setBody(exchange -> exchange.getProperty(SLCB_CHANNEL_REQUEST))
                 .marshal().json(JsonLibrary.Jackson)
                 .log(LoggingLevel.INFO, "Transaction Request Body: ${body}")
-                .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false");
+                .toD(slcbConfig.transactionRequestUrl + "?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                .log("Transaction API response: ${body}");
 
         from("direct:update-status")
                 .id("direct:update-status")
@@ -119,20 +121,20 @@ public class TransferRoutes extends BaseSLCBRouteBuilder {
                         Transaction transaction = transactionList.get(index);
                         transaction.setPayerIdentifier(slcbConfig.sourceAccount);
                         TransactionResult transactionResult = TransactionUtils.mapToResultDTO(transaction);
-                        if (payee.getStatus().getCode() == 0) {
+                        if (payee.getStatus() != null && payee.getStatus().getCode() == 0) {
                             transactionResult.setStatus("SUCCESS");
 
                             completed++;
                             completedAmount += payee.getAmount();
-                        } else if (payee.getStatus().getCode() == 1) {
+                        } else if (payee.getStatus() != null && payee.getStatus().getCode() == 1) {
                             transactionResult.setStatus("PENDING");
 
                             ongoing++;
                             ongoingAmount += payee.getAmount();
                         } else {
                             transactionResult.setStatus("FAILED");
-                            transactionResult.setErrorCode(String.format("%s", payee.getStatus().getCode()));
-                            transactionResult.setErrorDescription(payee.getStatus().getDescription());
+                            transactionResult.setErrorCode(String.format("%s", SLCBUtils.getStatusCodeOrDefault(payee.getStatus())));
+                            transactionResult.setErrorDescription(SLCBUtils.getStatusDescriptionOrDefault(payee.getStatus()));
 
                             failed++;
                             failedAmount += payee.getAmount();
